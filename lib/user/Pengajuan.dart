@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 
 // Color Palette untuk ArsipKu (sama dengan ApprovalPage)
 class AppColors {
@@ -118,397 +119,432 @@ class _PengajuanPageState extends State<PengajuanPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.upload_file_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Upload Pengajuan',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              contentPadding: EdgeInsets.zero,
+              title: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
                   children: [
-                    Text(
-                      'Jenis Pengajuan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.upload_file_rounded,
+                        color: Colors.white,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: selectedJenis,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.textTertiary),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Upload Pengajuan',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.textTertiary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              content: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Jenis Pengajuan',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 2,
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: selectedJenis,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.background,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                         ),
-                        filled: true,
-                        fillColor: AppColors.background,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                        hint: const Text('Pilih jenis pengajuan'),
+                        items: _jenisPengajuan.map((String jenis) {
+                          return DropdownMenuItem<String>(
+                            value: jenis,
+                            child: Text(
+                              jenis,
+                              style: const TextStyle(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: isUploading
+                            ? null
+                            : (String? newValue) {
+                                setDialogState(() {
+                                  selectedJenis = newValue;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Keterangan',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      hint: const Text('Pilih jenis pengajuan'),
-                      items: _jenisPengajuan.map((String jenis) {
-                        return DropdownMenuItem<String>(
-                          value: jenis,
-                          child: Text(
-                            jenis,
-                            style: const TextStyle(fontSize: 14),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: keteranganController,
+                        enabled: !isUploading,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.textTertiary,
+                            ),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: isUploading
-                          ? null
-                          : (String? newValue) {
-                              setDialogState(() {
-                                selectedJenis = newValue;
-                              });
-                            },
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Keterangan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: keteranganController,
-                      enabled: !isUploading,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.textTertiary),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.textTertiary),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 2,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.textTertiary,
+                            ),
                           ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                          hintText: 'Masukkan keterangan',
+                          filled: true,
+                          fillColor: AppColors.background,
+                          contentPadding: const EdgeInsets.all(16),
                         ),
-                        hintText: 'Masukkan keterangan',
-                        filled: true,
-                        fillColor: AppColors.background,
-                        contentPadding: const EdgeInsets.all(16),
+                        maxLines: 3,
                       ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Upload File',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
+                      const SizedBox(height: 16),
+                      Text(
+                        'Upload File',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: isUploading
-                                ? null
-                                : () async {
-                                    final result = await FilePicker.platform
-                                        .pickFiles(
-                                          type: FileType.custom,
-                                          allowedExtensions: [
-                                            'pdf',
-                                            'doc',
-                                            'docx',
-                                            'jpg',
-                                            'jpeg',
-                                            'png',
-                                          ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: isUploading
+                                  ? null
+                                  : () async {
+                                      final result = await FilePicker.platform
+                                          .pickFiles(
+                                            type: FileType.custom,
+                                            allowedExtensions: [
+                                              'pdf',
+                                              'doc',
+                                              'docx',
+                                              'jpg',
+                                              'jpeg',
+                                              'png',
+                                            ],
+                                          );
+
+                                      if (result != null) {
+                                        final file = File(
+                                          result.files.single.path!,
                                         );
+                                        final fileSize = await file.length();
 
-                                    if (result != null) {
-                                      final file = File(
-                                        result.files.single.path!,
-                                      );
-                                      final fileSize = await file.length();
-
-                                      if (fileSize > 10 * 1024 * 1024) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: const Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.warning,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 12),
-                                                  Text(
-                                                    'Ukuran file maksimal 10 MB',
-                                                  ),
-                                                ],
+                                        if (fileSize > 10 * 1024 * 1024) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: const Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.warning,
+                                                      color: Colors.white,
+                                                    ),
+                                                    SizedBox(width: 12),
+                                                    Text(
+                                                      'Ukuran file maksimal 10 MB',
+                                                    ),
+                                                  ],
+                                                ),
+                                                backgroundColor:
+                                                    AppColors.warning,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                margin: const EdgeInsets.all(
+                                                  16,
+                                                ),
                                               ),
-                                              backgroundColor:
-                                                  AppColors.warning,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              margin: const EdgeInsets.all(16),
-                                            ),
-                                          );
+                                            );
+                                          }
+                                        } else {
+                                          setDialogState(() {
+                                            selectedFile = file;
+                                          });
                                         }
-                                      } else {
-                                        setDialogState(() {
-                                          selectedFile = file;
-                                        });
                                       }
-                                    }
-                                  },
-                            icon: const Icon(
-                              Icons.folder_open_rounded,
-                              size: 18,
-                            ),
-                            label: const Text(
-                              'Pilih File',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                                    },
+                              icon: const Icon(
+                                Icons.folder_open_rounded,
+                                size: 18,
                               ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              label: const Text(
+                                'Pilih File',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: isUploading
-                                ? null
-                                : () async {
-                                    final ImagePicker picker = ImagePicker();
-                                    final XFile? photo = await picker.pickImage(
-                                      source: ImageSource.camera,
-                                      maxWidth: 1920,
-                                      maxHeight: 1920,
-                                      imageQuality: 85,
-                                    );
-
-                                    if (photo != null) {
-                                      final file = File(photo.path);
-                                      final fileSize = await file.length();
-
-                                      if (fileSize > 10 * 1024 * 1024) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: const Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.warning,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 12),
-                                                  Text(
-                                                    'Ukuran foto maksimal 10 MB',
-                                                  ),
-                                                ],
-                                              ),
-                                              backgroundColor:
-                                                  AppColors.warning,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              margin: const EdgeInsets.all(16),
-                                            ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: isUploading
+                                  ? null
+                                  : () async {
+                                      final ImagePicker picker = ImagePicker();
+                                      final XFile? photo = await picker
+                                          .pickImage(
+                                            source: ImageSource.camera,
+                                            maxWidth: 1920,
+                                            maxHeight: 1920,
+                                            imageQuality: 85,
                                           );
+
+                                      if (photo != null) {
+                                        final file = File(photo.path);
+                                        final fileSize = await file.length();
+
+                                        if (fileSize > 10 * 1024 * 1024) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: const Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.warning,
+                                                      color: Colors.white,
+                                                    ),
+                                                    SizedBox(width: 12),
+                                                    Text(
+                                                      'Ukuran foto maksimal 10 MB',
+                                                    ),
+                                                  ],
+                                                ),
+                                                backgroundColor:
+                                                    AppColors.warning,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                margin: const EdgeInsets.all(
+                                                  16,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } else {
+                                          setDialogState(() {
+                                            selectedFile = file;
+                                          });
                                         }
-                                      } else {
-                                        setDialogState(() {
-                                          selectedFile = file;
-                                        });
                                       }
-                                    }
+                                    },
+                              icon: const Icon(
+                                Icons.camera_alt_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Kamera',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (selectedFile != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.success.withOpacity(0.1),
+                                AppColors.successLight.withOpacity(0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.success.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.success,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  selectedFile!.path.split('/').last,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!isUploading)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    size: 20,
+                                    color: AppColors.error,
+                                  ),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      selectedFile = null;
+                                    });
                                   },
-                            icon: const Icon(
-                              Icons.camera_alt_rounded,
-                              size: 18,
-                            ),
-                            label: const Text(
-                              'Kamera',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.secondary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                    if (selectedFile != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.success.withOpacity(0.1),
-                              AppColors.successLight.withOpacity(0.05),
-                            ],
+                      if (isUploading) ...[
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.success.withOpacity(0.3),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: CircularProgressIndicator(
+                                  value: uploadProgress,
+                                  strokeWidth: 4,
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                        AppColors.primary,
+                                      ),
+                                  backgroundColor: AppColors.primary
+                                      .withOpacity(0.2),
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.check_circle_rounded,
-                                color: AppColors.success,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                selectedFile!.path.split('/').last,
+                              const SizedBox(height: 12),
+                              Text(
+                                'Mengupload... ${(uploadProgress * 100).toStringAsFixed(0)}%',
                                 style: const TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            if (!isUploading)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  size: 20,
-                                  color: AppColors.error,
-                                ),
-                                onPressed: () {
-                                  setDialogState(() {
-                                    selectedFile = null;
-                                  });
-                                },
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
-                    if (isUploading) ...[
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: CircularProgressIndicator(
-                                value: uploadProgress,
-                                strokeWidth: 4,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.primary,
-                                ),
-                                backgroundColor: AppColors.primary.withOpacity(
-                                  0.2,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Mengupload... ${(uploadProgress * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
               actions: [
@@ -729,22 +765,77 @@ class _PengajuanPageState extends State<PengajuanPage> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  Future<void> _downloadFile(String url, String fileName) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch $url';
+      }
+    } catch (e) {
+      debugPrint('Error downloading file: $e');
+    }
+  }
+
   void _showFilePreview(BuildContext context, Map<String, dynamic> data) async {
     final fileName = data['fileName'] as String;
     final fileUrl = data['fileUrl'] as String?;
     final fileSize = data['fileSize'] as int;
+    final jenis = data['jenis'] as String;
+    final keterangan = data['keterangan'] as String? ?? '-';
+    final status = data['status'] as String;
+    final tanggal = (data['tanggal'] as Timestamp?)?.toDate();
+
+    // Cek apakah ada assignedTo
+    final hasAssignedTo =
+        data.containsKey('assignedTo') &&
+        data['assignedTo'] != null &&
+        (data['assignedTo'] as List).isNotEmpty;
+
+    // Get approval info if exists
+    String approvalInfo = 'Admin belum set penerima file';
+    String approverName = '-';
+
+    if (hasAssignedTo) {
+      final assignedTo = data['assignedTo'] as List;
+      final assignedToId = assignedTo.first as String;
+
+      try {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(assignedToId)
+            .get();
+        if (userDoc.exists) {
+          approverName = userDoc.data()?['name'] ?? 'Unknown';
+          approvalInfo = 'Menunggu approval dari $approverName';
+        }
+      } catch (e) {
+        debugPrint('Error fetching user: $e');
+      }
+    }
+
+    // Check if file is PDF or image
+    final isPdf = fileName.toLowerCase().endsWith('.pdf');
+    final isImage =
+        fileName.toLowerCase().endsWith('.jpg') ||
+        fileName.toLowerCase().endsWith('.jpeg') ||
+        fileName.toLowerCase().endsWith('.png');
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Header
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.only(
@@ -754,14 +845,25 @@ class _PengajuanPageState extends State<PengajuanPage> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.description_rounded, color: Colors.white),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.description_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
-                        'Detail File',
+                        'Detail Pengajuan',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -773,47 +875,152 @@ class _PengajuanPageState extends State<PengajuanPage> {
                   ],
                 ),
               ),
+
+              // Content
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildInfoRow(
-                        Icons.insert_drive_file_rounded,
-                        'Nama File',
-                        fileName,
+                      // Jenis Pengajuan
+                      _buildDetailSection(
+                        icon: Icons.category_rounded,
+                        label: 'Jenis Pengajuan',
+                        value: jenis,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(
-                        Icons.storage_rounded,
-                        'Ukuran',
-                        _formatFileSize(fileSize),
+                      const SizedBox(height: 16),
+
+                      // Keterangan
+                      _buildDetailSection(
+                        icon: Icons.notes_rounded,
+                        label: 'Keterangan',
+                        value: keterangan,
+                        color: AppColors.secondary,
                       ),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(
-                        Icons.link_rounded,
-                        'Status',
-                        fileUrl != null
-                            ? 'File tersedia'
-                            : 'File tidak tersedia',
+                      const SizedBox(height: 16),
+
+                      // Status
+                      _buildDetailSection(
+                        icon: _getStatusIcon(status),
+                        label: 'Status',
+                        value: status,
+                        color: _getStatusColor(status),
                       ),
+                      const SizedBox(height: 16),
+
+                      // Approval Info
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: hasAssignedTo
+                              ? AppColors.success.withOpacity(0.1)
+                              : AppColors.warning.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: hasAssignedTo
+                                ? AppColors.success.withOpacity(0.3)
+                                : AppColors.warning.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: hasAssignedTo
+                                    ? AppColors.success.withOpacity(0.15)
+                                    : AppColors.warning.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                hasAssignedTo
+                                    ? Icons.person_rounded
+                                    : Icons.warning_rounded,
+                                color: hasAssignedTo
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    hasAssignedTo ? 'Approver' : 'Perhatian',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: hasAssignedTo
+                                          ? AppColors.success
+                                          : AppColors.warning,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    approvalInfo,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // File Info
+                      _buildDetailSection(
+                        icon: Icons.insert_drive_file_rounded,
+                        label: 'Nama File',
+                        value: fileName,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildDetailSection(
+                        icon: Icons.storage_rounded,
+                        label: 'Ukuran File',
+                        value: _formatFileSize(fileSize),
+                        color: AppColors.secondary,
+                      ),
+
+                      if (tanggal != null) ...[
+                        const SizedBox(height: 16),
+                        _buildDetailSection(
+                          icon: Icons.calendar_today_rounded,
+                          label: 'Tanggal Upload',
+                          value:
+                              '${tanggal.day}/${tanggal.month}/${tanggal.year} ${tanggal.hour}:${tanggal.minute.toString().padLeft(2, '0')}',
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+
+                      // Preview Section
                       if (fileUrl != null) ...[
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         const Divider(),
                         const SizedBox(height: 20),
-                        if (fileName.toLowerCase().endsWith('.jpg') ||
-                            fileName.toLowerCase().endsWith('.jpeg') ||
-                            fileName.toLowerCase().endsWith('.png')) ...[
-                          const Text(
-                            'Preview',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
+                        Text(
+                          'Preview File',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.5,
                           ),
-                          const SizedBox(height: 12),
+                        ),
+                        const SizedBox(height: 12),
+
+                        if (isImage) ...[
+                          // Image Preview
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
@@ -872,12 +1079,96 @@ class _PengajuanPageState extends State<PengajuanPage> {
                               },
                             ),
                           ),
+                        ] else if (isPdf) ...[
+                          // PDF Message
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.picture_as_pdf_rounded,
+                                  size: 48,
+                                  color: AppColors.primary.withOpacity(0.7),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Preview file tidak tersedia untuk PDF',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Silakan download file untuk melihat isinya',
+                                  style: TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          // Other file types
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.textTertiary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.textTertiary.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.description_outlined,
+                                  size: 48,
+                                  color: AppColors.textTertiary.withOpacity(
+                                    0.7,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Preview file tidak tersedia',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Silakan download file untuk melihat isinya',
+                                  style: TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ],
                     ],
                   ),
                 ),
               ),
+
+              // Download Button
               if (fileUrl != null)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -889,49 +1180,49 @@ class _PengajuanPageState extends State<PengajuanPage> {
                       ),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color: Colors.white,
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text('Implementasi download/buka file'),
-                                  ],
-                                ),
-                                backgroundColor: AppColors.primary,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                margin: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await _downloadFile(fileUrl, fileName);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.download_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text('Mengunduh file...'),
+                                ],
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                          label: const Text(
-                            'Buka File',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              margin: const EdgeInsets.all(16),
                             ),
-                          ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.download_rounded, size: 20),
+                      label: const Text(
+                        'Download File',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
             ],
@@ -941,23 +1232,28 @@ class _PengajuanPageState extends State<PengajuanPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildDetailSection({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.textTertiary.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary, size: 20),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -972,7 +1268,7 @@ class _PengajuanPageState extends State<PengajuanPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   value,
                   style: const TextStyle(
@@ -1416,14 +1712,26 @@ class _PengajuanPageState extends State<PengajuanPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showUploadDialog,
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Buat Pengajuan',
-          style: TextStyle(fontWeight: FontWeight.bold),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _showUploadDialog,
+          backgroundColor: AppColors.primary,
+          elevation: 0,
+          icon: const Icon(Icons.add_rounded, size: 24),
+          label: const Text(
+            'Buat Pengajuan',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
         ),
       ),
     );
